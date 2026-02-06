@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "well_typification_latent"
+version = "0.1.0"
+description = "Типизация режимов нефтяных скважин"
+authors = ["Aslan Alibekov"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.13,<3.15"
+numpy = "^2.4.2"
+pandas = "^3.0.0"
+torch = "^2.9.0"
+scikit-learn = "^1.8.0"
+hdbscan = "^0.8.41"
+dash = "^4.0.0"
+plotly = "^6.5.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.15.0"
+mypy = "^1.19.1"
+jupyter = "^1.1.1"
+ipykernel = "^7.2.0"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["hdbscan.*", "sklearn.*", "plotly.*", "dash.*"]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
