@@ -9,8 +9,8 @@ code/
 │
 ├── training/                   # ЧАСТЬ 1: Обучение
 │   ├── eda.ipynb               # Этап 1: EDA + очистка + нормализация → data/processed/
-│   ├── training.ipynb          # Этапы 2-6: окна → автоэнкодер → кластеризация → models/
-│   └── validation.ipynb        # Проверка качества кластеризации
+│   ├── training.ipynb          # Этапы 2-3: окна → автоэнкодер → models/
+│   └── clustering.ipynb        # Этапы 4-6: кластеризация -> проверка качества → models/
 │
 ├── models/                     # Сохранённые модели (результат обучения)
 │   ├── ecn/
@@ -18,12 +18,14 @@ code/
 │   │   ├── decoder.pth
 │   │   ├── clusters.pkl
 │   │   ├── profiles.pkl
+│   │   ├── scaler.pkl
 │   │   └── metadata.json
 │   └── shgn/
 │       ├── encoder.pth
 │       ├── decoder.pth
 │       ├── clusters.pkl
 │       ├── profiles.pkl
+│       ├── scaler.pkl
 │       └── metadata.json
 │
 ├── src/                        # ЧАСТЬ 2: Продакшн система (этапы 7-8)
