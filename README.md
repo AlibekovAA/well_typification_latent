@@ -8,25 +8,9 @@
 code/
 │
 ├── training/                   # ЧАСТЬ 1: Обучение
-│   ├── eda.ipynb               # Этап 1: EDA + очистка + нормализация → data/processed/
-│   ├── training.ipynb          # Этапы 2-3: окна → автоэнкодер → models/
-│   └── clustering.ipynb        # Этапы 4-6: кластеризация -> проверка качества → models/
+│   ├── eda.ipynb               # Этап 1: EDA + очистка + нормализация → data/processed/ and reports/
 │
 ├── models/                     # Сохранённые модели (результат обучения)
-│   ├── ecn/
-│   │   ├── encoder.pth
-│   │   ├── decoder.pth
-│   │   ├── clusters.pkl
-│   │   ├── profiles.pkl
-│   │   ├── scaler.pkl
-│   │   └── metadata.json
-│   └── shgn/
-│       ├── encoder.pth
-│       ├── decoder.pth
-│       ├── clusters.pkl
-│       ├── profiles.pkl
-│       ├── scaler.pkl
-│       └── metadata.json
 │
 ├── src/                        # ЧАСТЬ 2: Продакшн система (этапы 7-8)
 │   ├── __init__.py
@@ -45,18 +29,12 @@ code/
 ├── main.py                     # Точка входа: запуск всей системы
 │
 ├── data/                       # Данные
-│   ├── скважина 133 ЭЦН/       # Исходные .txt файлы ЭЦН (16 файлов)
-│   ├── скважина 134 ШГН/       # Исходные .txt файлы ШГН (9 файлов)
-│   ├── скважина 135 ШГН/       # Исходные .txt файлы ШГН (6 файлов)
-│   └── processed/              # Обработанные данные (результат EDA)
-│       ├── ecn_train.csv       # ЭЦН: train (80%)
-│       ├── ecn_val.csv         # ЭЦН: validation (10%)
-│       ├── ecn_test.csv        # ЭЦН: test (10%)
-│       ├── shgn_train.csv      # ШГН (134+135): train (80%)
-│       ├── shgn_val.csv        # ШГН (134+135): validation (10%)
-│       ├── shgn_test.csv       # ШГН (134+135): test (10%)
-│       ├── scaler_ecn.pkl      # Параметры нормализации ЭЦН
-│       └── scaler_shgn.pkl     # Параметры нормализации ШГН (объединённые 134+135)
+│   ├── скважина 133 ЭЦН/       # Исходные .txt файлы ЭЦН
+│   ├── скважина 134 ШГН/       # Исходные .txt файлы ШГН
+│   ├── скважина 135 ШГН/       # Исходные .txt файлы ШГН
+│
+├── reports/                    # Отчёты EDA
+│   └── eda_report.html
 │
 └── db/                         # База данных для потоковой обработки
     └── streaming.db            # SQLite: история состояний скважин
