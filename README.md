@@ -8,7 +8,8 @@
 code/
 │
 ├── training/                   # ЧАСТЬ 1: Обучение
-│   ├── eda.ipynb               # Этап 1: EDA + очистка + нормализация → data/processed/ and reports/
+│   ├── eda.ipynb               # Этап 1: EDA + очистка + нормализация → data/processed/
+│   ├── autoencoder.ipynb       # Этапы 2-3: окна → автоэнкодер → models/
 │
 ├── models/                     # Сохранённые модели (результат обучения)
 │
