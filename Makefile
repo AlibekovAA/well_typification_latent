@@ -1,7 +1,13 @@
-.PHONY: install fmt lint type check
+.PHONY: install fmt lint type check run run-fast
 
 install:
 	poetry install
+
+run:
+	set PYTHONPATH=src&& poetry run python main.py
+
+run-fast:
+	set PYTHONPATH=src&& poetry run python main.py --fast
 
 fmt:
 	poetry run ruff format .

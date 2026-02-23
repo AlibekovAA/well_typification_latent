@@ -19,7 +19,8 @@ data/*
 *.pth
 *.pkl
 *.h5
-models/*
+models/ech/*
+models/shgn/*
 
 .ipynb_checkpoints/
 
@@ -28,6 +29,8 @@ models/*
 
 db/*.db
 db/*.db-journal
+db/*.db-wal
+db/*.db-shm
 
 .DS_Store
 Thumbs.db
