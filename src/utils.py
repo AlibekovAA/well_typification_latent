@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pickle
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -56,3 +56,8 @@ def load_latents_and_labels(prefix: str) -> tuple[np.ndarray, np.ndarray]:
     latents = np.load(MODELS_DIR / prefix / "latents.npy")
     labels = np.load(MODELS_DIR / prefix / "labels.npy")
     return latents, labels
+
+
+def load_thresholds(prefix: str) -> dict[int, dict[str, float]]:
+    raw = _load_pickle(MODELS_DIR / prefix / "thresholds.pkl")
+    return cast(dict[int, dict[str, float]], raw)

@@ -93,8 +93,18 @@ WELL_CONFIGS: list[WellConfig] = [
 ]
 
 CLUSTER_LABELS: dict[str, dict[int, str]] = {
-    "ecn": {0: "Стабильная работа", 1: "Запуск", 2: "Выключена"},
-    "shgn": {0: "Нефть", 1: "Нефть→Газ", 2: "Газ", 3: "Вода"},
+    "ecn": {
+        0: "Стабильная работа",
+        1: "Выключена",
+        2: "Запуск",
+    },
+    "shgn": {
+        0: "Фаза газа",
+        1: "Фаза воды",
+        2: "Переход газ→жидкость",
+        3: "Фаза нефти",
+        4: "Переход нефть→вода",
+    },
 }
 
 PUMP_TYPE_LABEL: dict[str, str] = {
@@ -103,8 +113,18 @@ PUMP_TYPE_LABEL: dict[str, str] = {
 }
 
 CLUSTER_COLORS: dict[str, dict[int, str]] = {
-    "ecn": {0: "#f0a500", 1: "#2ecc71", 2: "#95a5a6"},
-    "shgn": {0: "#8e44ad", 1: "#e67e22", 2: "#3498db", 3: "#1abc9c"},
+    "ecn": {
+        0: "#2ecc71",
+        1: "#95a5a6",
+        2: "#f39c12",
+    },
+    "shgn": {
+        0: "#8e44ad",
+        1: "#e67e22",
+        2: "#3498db",
+        3: "#1abc9c",
+        4: "#34495e",
+    },
 }
 
 MODEL_HYPERPARAMS: dict[str, int | float] = {

@@ -10,8 +10,6 @@ from dash import Dash, Input, Output, dcc, html, no_update
 from config import (
     CLUSTER_COLORS,
     CLUSTER_LABELS,
-    DEVIATION_ALERT_THRESHOLD,
-    DEVIATION_WARN_THRESHOLD,
     FAST_EMULATOR_SLEEP_SECONDS,
     FEATURE_COLUMNS,
     FEATURE_LABELS,
@@ -21,8 +19,15 @@ from config import (
 )
 from dashboard.components import layout_root
 from streaming import fetch_history, get_connection, init_db, run_emulator_background
+from utils import load_thresholds
 
 logger = logging.getLogger(__name__)
+
+
+THRESHOLDS: dict[str, dict[int, dict[str, float]]] = {
+    "ecn": load_thresholds("ecn"),
+    "shgn": load_thresholds("shgn"),
+}
 
 
 class WellRecord(TypedDict):
@@ -104,18 +109,38 @@ def _empty_figure(*, height: int = 140) -> go.Figure:
     return fig
 
 
-def _deviation_color(deviation: float) -> str:
-    if deviation < DEVIATION_WARN_THRESHOLD:
+def _get_cluster_thresholds(pump_type: str, cluster: int) -> dict[str, float] | None:
+    return THRESHOLDS.get(pump_type, {}).get(cluster)
+
+
+def _deviation_color(pump_type: str, cluster: int, deviation: float) -> str:
+    thresholds = _get_cluster_thresholds(pump_type, cluster)
+    if thresholds is not None:
+        warn = thresholds["warn"]
+        alert = thresholds["alert"]
+    else:
+        warn = 5.0
+        alert = 5.5
+
+    if deviation < warn:
         return "#2ecc71"
-    if deviation < DEVIATION_ALERT_THRESHOLD:
+    if deviation < alert:
         return "#f39c12"
     return "#e74c3c"
 
 
-def _deviation_label(deviation: float) -> str:
-    if deviation < DEVIATION_WARN_THRESHOLD:
+def _deviation_label(pump_type: str, cluster: int, deviation: float) -> str:
+    thresholds = _get_cluster_thresholds(pump_type, cluster)
+    if thresholds is not None:
+        warn = thresholds["warn"]
+        alert = thresholds["alert"]
+    else:
+        warn = 5.0
+        alert = 5.5
+
+    if deviation < warn:
         return "● Норма"
-    if deviation < DEVIATION_ALERT_THRESHOLD:
+    if deviation < alert:
         return "● Внимание"
     return "● Аномалия"
 
@@ -124,8 +149,8 @@ def _build_status(well_id: str, cluster: int, deviation: float) -> html.Div:
     pump_type = _get_pump_type(well_id)
     cluster_name = CLUSTER_LABELS.get(pump_type, {}).get(cluster, str(cluster))
     cluster_color = CLUSTER_COLORS.get(pump_type, {}).get(cluster, "#7f8c8d")
-    dev_color = _deviation_color(deviation)
-    dev_label = _deviation_label(deviation)
+    dev_color = _deviation_color(pump_type, cluster, deviation)
+    dev_label = _deviation_label(pump_type, cluster, deviation)
 
     return html.Div(
         [
