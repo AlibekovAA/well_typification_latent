@@ -4,10 +4,10 @@ install:
 	poetry install
 
 run:
-	set PYTHONPATH=src&& poetry run python main.py
+	cmd /C "set PYTHONPATH=src&& poetry run python main.py"
 
 run-fast:
-	set PYTHONPATH=src&& poetry run python main.py --fast
+	cmd /C "set PYTHONPATH=src&& poetry run python main.py --fast"
 
 fmt:
 	poetry run ruff format .

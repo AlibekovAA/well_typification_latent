@@ -6,7 +6,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,7 @@ import torch
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from config import FEATURE_COLUMNS, PUMP_CONFIGS, PumpType, WellConfig
+from config import FEATURE_COLUMNS, FEATURE_INDICES, PUMP_CONFIGS, PumpType, WellConfig
 from streaming.storage import HistoryRecord, insert_history_record
 from utils import get_device, load_kmeans, load_scaler, load_trained_model
 
@@ -28,6 +28,7 @@ class ProcessorBundle:
     scaler: StandardScaler
     window_size: int
     pump_type: PumpType
+    device: torch.device
 
 
 def load_processor_bundle(pump_type: PumpType) -> ProcessorBundle:
@@ -40,6 +41,7 @@ def load_processor_bundle(pump_type: PumpType) -> ProcessorBundle:
         scaler=load_scaler(pump_type),
         window_size=pump_cfg.window_size,
         pump_type=pump_type,
+        device=device,
     )
 
 
@@ -53,19 +55,17 @@ class WellProcessor:
         self._well = well
         self._bundle = bundle
         self._db_conn = db_conn
-        self._device = get_device()
-        self._buffer: deque[np.ndarray] = deque(maxlen=bundle.window_size)
+        self._buffer: deque[np.ndarray[Any, np.dtype[np.float32]]] = deque(maxlen=bundle.window_size)
+        self._lines_seen: int = 0
 
     @staticmethod
-    def _parse_line(line: str) -> tuple[str, np.ndarray]:
+    def _parse_line(line: str) -> tuple[str, np.ndarray[Any, np.dtype[np.float32]]]:
         parts = line.strip().split("\t")
         if len(parts) < 12:
             raise ValueError(f"Неверный формат строки: {line!r}")
-
         timestamp = datetime.strptime(f"{parts[0]} {parts[1]}", "%Y.%m.%d %H:%M:%S").isoformat(sep=" ")
-
-        features = np.array(
-            [float(parts[i]) for i in (2, 3, 4, 5, 6, 7, 8, 10, 11)],
+        features: np.ndarray[Any, np.dtype[np.float32]] = np.array(
+            [float(parts[i]) for i in FEATURE_INDICES],
             dtype=np.float32,
         )
         return timestamp, features
@@ -74,19 +74,34 @@ class WellProcessor:
         timestamp, features = self._parse_line(line)
         self._buffer.append(features)
 
+        self._lines_seen += 1
+        if self._lines_seen % 50 == 0:
+            logger.info(
+                "[%s] получено %d строк, размер окна=%d/%d",
+                self._well.well_id,
+                self._lines_seen,
+                len(self._buffer),
+                self._bundle.window_size,
+            )
+
         if len(self._buffer) < self._bundle.window_size:
             return
 
-        window = np.stack(self._buffer, axis=0)
+        window: np.ndarray[Any, np.dtype[np.float32]] = np.stack(self._buffer, axis=0)
         window_df = pd.DataFrame(window, columns=FEATURE_COLUMNS)
-        window_scaled = self._bundle.scaler.transform(window_df).astype(np.float32)
+
+        transformed = cast(
+            np.ndarray[Any, np.dtype[Any]],
+            self._bundle.scaler.transform(window_df),
+        )
+        window_scaled: np.ndarray[Any, np.dtype[np.float32]] = transformed.astype(np.float32)
 
         with torch.no_grad():
-            x = torch.from_numpy(window_scaled).unsqueeze(0).to(self._device)
-            z_np = self._bundle.model.encode(x).cpu().numpy()[0]
+            x = torch.from_numpy(window_scaled).unsqueeze(0).to(self._bundle.device)
+            z_np: np.ndarray[Any, np.dtype[np.float32]] = self._bundle.model.encode(x).cpu().numpy()[0]
 
         cluster_id = int(self._bundle.kmeans.predict(z_np.reshape(1, -1))[0])
-        center = self._bundle.kmeans.cluster_centers_[cluster_id]
+        center: np.ndarray[Any, np.dtype[np.float32]] = self._bundle.kmeans.cluster_centers_[cluster_id]
         deviation = float(np.linalg.norm(z_np - center))
 
         record = HistoryRecord(

@@ -27,15 +27,27 @@ FEATURE_COLUMNS: list[str] = [
 ]
 
 FEATURE_LABELS: dict[str, str] = {
-    "us_center": "УС центр",
-    "us_periph": "УС периф.",
-    "gas_center": "Газ центр",
-    "gas_periph": "Газ периф.",
+    "us_center": "Скорость ультразвука в центре трубы",
+    "us_periph": "Скорость ультразвука на периферии трубы",
+    "gas_center": "Газосодержание в центре трубы",
+    "gas_periph": "Газосодержание на периферии трубы",
     "temp": "Температура",
-    "water_center": "Вода центр",
-    "water_periph": "Вода периф.",
-    "gas_integral": "Газ инт.",
-    "water_integral": "Вода инт.",
+    "water_center": "Обводнённость в центре трубы",
+    "water_periph": "Обводнённость на периферии трубы",
+    "gas_integral": "Интегральное газосодержание",
+    "water_integral": "Интегральная обводнённость",
+}
+
+FEATURE_UNITS: dict[str, str] = {
+    "us_center": "м/с",
+    "us_periph": "м/с",
+    "gas_center": "%",
+    "gas_periph": "%",
+    "temp": "°C",
+    "water_center": "%",
+    "water_periph": "%",
+    "gas_integral": "%",
+    "water_integral": "%",
 }
 
 COLUMN_NAMES: list[str] = [
@@ -52,6 +64,8 @@ COLUMN_NAMES: list[str] = [
     "gas_integral",
     "water_integral",
 ]
+
+FEATURE_INDICES: list[int] = [2, 3, 4, 5, 6, 7, 8, 10, 11]
 
 
 @dataclass(frozen=True)
@@ -79,7 +93,7 @@ WELL_CONFIGS: list[WellConfig] = [
 ]
 
 CLUSTER_LABELS: dict[str, dict[int, str]] = {
-    "ecn": {0: "Запуск", 1: "Работа", 2: "Выключена"},
+    "ecn": {0: "Стабильная работа", 1: "Запуск", 2: "Выключена"},
     "shgn": {0: "Нефть", 1: "Нефть→Газ", 2: "Газ", 3: "Вода"},
 }
 
@@ -103,6 +117,6 @@ MODEL_HYPERPARAMS: dict[str, int | float] = {
 }
 
 STREAM_SLEEP_SECONDS: float = 10.0
-FAST_EMULATOR_SLEEP_SECONDS: float = 0.1
+FAST_EMULATOR_SLEEP_SECONDS: float = 0.5
 DEVIATION_WARN_THRESHOLD: float = 5
 DEVIATION_ALERT_THRESHOLD: float = 5.5

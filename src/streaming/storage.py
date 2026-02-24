@@ -4,7 +4,7 @@ import logging
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 from config import DB_PATH
@@ -90,7 +90,23 @@ def get_connection(db_path: Path = DB_PATH) -> Generator[sqlite3.Connection]:
 
 
 def insert_history_record(conn: sqlite3.Connection, record: HistoryRecord) -> None:
-    conn.execute(_INSERT_SQL, astuple(record))
+    values = (
+        record.timestamp,
+        record.well,
+        record.pump_type,
+        record.cluster,
+        record.deviation,
+        record.us_center,
+        record.us_periph,
+        record.gas_center,
+        record.gas_periph,
+        record.temp,
+        record.water_center,
+        record.water_periph,
+        record.gas_integral,
+        record.water_integral,
+    )
+    conn.execute(_INSERT_SQL, values)
     conn.commit()
     logger.debug(
         "history: well=%s ts=%s cluster=%s deviation=%.4f",
@@ -104,17 +120,21 @@ def insert_history_record(conn: sqlite3.Connection, record: HistoryRecord) -> No
 def fetch_history(
     conn: sqlite3.Connection,
     well: str,
+    *,
     limit: int = 1000,
+    since: str | None = None,
 ) -> list[sqlite3.Row]:
-    return conn.execute(
-        """
+    sql = """
         SELECT timestamp, cluster, deviation, pump_type,
                us_center, us_periph, gas_center, gas_periph, temp,
                water_center, water_periph, gas_integral, water_integral
         FROM history
         WHERE well = ?
-        ORDER BY timestamp DESC
-        LIMIT ?
-        """,
-        (well, limit),
-    ).fetchall()
+    """
+    params: list[object] = [well]
+    if since is not None:
+        sql += " AND timestamp >= ?"
+        params.append(since)
+    sql += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+    return conn.execute(sql, params).fetchall()

@@ -17,6 +17,7 @@ def _run_well_stream(well_cfg: WellConfig, sleep_seconds: float) -> None:
 
     with get_connection() as conn:
         processor = WellProcessor(well_cfg, bundle, conn)
+
         for path in iter_well_files(well_cfg.data_dir):
             logger.info("[%s] Читаю файл: %s", well_cfg.well_id, path.name)
             with path.open("r", encoding="utf-8") as f:

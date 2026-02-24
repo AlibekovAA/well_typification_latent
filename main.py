@@ -8,7 +8,7 @@ import sys
 from dashboard.app import run_app
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(threadName)s] %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         "--fast",
         "-f",
         action="store_true",
-        help="Быстрый эмулятор: пауза 0.1 с между строками (для отладки)",
+        help="Быстрый эмулятор: пауза 0.5 с между строками (для отладки)",
     )
     args = parser.parse_args()
 
