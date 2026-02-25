@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 import torch
 import torch.nn as nn
@@ -33,7 +33,7 @@ class RNNAutoencoder(nn.Module):
         self.is_lstm = rnn_cls is nn.LSTM
         eff_dropout = dropout if num_layers > 1 else 0.0
 
-        self.encoder_rnn: Any = rnn_cls(
+        self.encoder_rnn = rnn_cls(
             input_dim,
             hidden_size,
             num_layers,
@@ -45,7 +45,7 @@ class RNNAutoencoder(nn.Module):
         self.encoder_fc = nn.Linear(hidden_size * 2, latent_dim)
 
         self.decoder_fc = nn.Linear(latent_dim, hidden_size * num_layers)
-        self.decoder_rnn: Any = rnn_cls(
+        self.decoder_rnn = rnn_cls(
             input_dim,
             hidden_size,
             num_layers,
@@ -111,6 +111,7 @@ class TemporalBlock(nn.Module):
             nn.Dropout(dropout),
             CausalConv1d(n_out, n_out, kernel_size, dilation),
             nn.BatchNorm1d(n_out),
+            nn.GELU(),
             nn.Dropout(dropout),
         )
         self.downsample: nn.Module = nn.Conv1d(n_in, n_out, 1) if n_in != n_out else nn.Identity()
@@ -158,6 +159,7 @@ class TCNAutoencoder(nn.Module):
         self.bottleneck = nn.Linear(hidden_size, latent_dim)
         self.decoder_bridge = nn.Sequential(nn.Linear(latent_dim, hidden_size), nn.GELU())
         self.decoder = _build_tcn_encoder(hidden_size, hidden_size, num_layers, kernel_size, dilation_base, dropout)
+        self.input_proj = nn.Conv1d(input_dim, hidden_size, kernel_size=1)
         self.output_conv = nn.Conv1d(hidden_size, input_dim, 1)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
@@ -166,8 +168,13 @@ class TCNAutoencoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         z = self.encode(x)
-        h = cast(torch.Tensor, self.decoder_bridge(z)).unsqueeze(-1).expand(-1, -1, x.size(1))
-        recon = cast(torch.Tensor, self.output_conv(cast(torch.Tensor, self.decoder(h)))).transpose(1, 2)
+        x_shifted = torch.cat([x[:, :1, :], x[:, :-1, :]], dim=1)
+        h = self.decoder_bridge(z).unsqueeze(-1).expand(-1, -1, x.size(1))
+        x_proj = self.input_proj(x_shifted.transpose(1, 2))
+        h = h + x_proj
+
+        decoded = self.decoder(h)
+        recon = self.output_conv(decoded).transpose(1, 2)
         return recon, z
 
 

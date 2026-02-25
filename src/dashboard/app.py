@@ -284,7 +284,6 @@ def _build_feature_figure(rows: Sequence[WellRecord], feature_col: FeatureCol) -
         tickfont={"size": 10},
     )
     fig.update_yaxes(
-        title=f"{FEATURE_LABELS[feature_col]} ({FEATURE_UNITS[feature_col]})",
         showgrid=True,
         gridcolor="rgba(0,0,0,0.05)",
         tickfont={"size": 10},
