@@ -34,3 +34,7 @@ db/*.db-shm
 
 .DS_Store
 Thumbs.db
+
+architecture_figures/
+models/ecn/
+models/shgn/

@@ -54,6 +54,20 @@ class RNNAutoencoder(nn.Module):
         )
         self.output_fc = nn.Linear(hidden_size, input_dim)
 
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        if isinstance(m, (nn.Linear, nn.Conv1d)):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        elif isinstance(m, (nn.GRU, nn.LSTM)):
+            for name, param in m.named_parameters():
+                if "weight" in name:
+                    nn.init.orthogonal_(param)
+                elif "bias" in name:
+                    nn.init.zeros_(param)
+
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         out, _ = self.encoder_rnn(x)
         pooled = cast(torch.Tensor, self.attn_pool(out))
@@ -156,15 +170,26 @@ class TCNAutoencoder(nn.Module):
     ) -> None:
         super().__init__()
         self.encoder = _build_tcn_encoder(input_dim, hidden_size, num_layers, kernel_size, dilation_base, dropout)
+        self.attn_pool = AttentionPool(hidden_size)
         self.bottleneck = nn.Linear(hidden_size, latent_dim)
         self.decoder_bridge = nn.Sequential(nn.Linear(latent_dim, hidden_size), nn.GELU())
         self.decoder = _build_tcn_encoder(hidden_size, hidden_size, num_layers, kernel_size, dilation_base, dropout)
         self.input_proj = nn.Conv1d(input_dim, hidden_size, kernel_size=1)
         self.output_conv = nn.Conv1d(hidden_size, input_dim, 1)
 
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        if isinstance(m, (nn.Linear, nn.Conv1d)):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         enc = cast(torch.Tensor, self.encoder(x.transpose(1, 2)))
-        return cast(torch.Tensor, self.bottleneck(enc.mean(dim=-1)))
+        enc = enc.transpose(1, 2)
+        pooled = cast(torch.Tensor, self.attn_pool(enc))
+        return cast(torch.Tensor, self.bottleneck(pooled))
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         z = self.encode(x)
@@ -206,6 +231,20 @@ class HybridAutoencoder(nn.Module):
             dropout=dropout if num_layers > 1 else 0.0,
         )
         self.output_fc = nn.Linear(hidden_size, input_dim)
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        if isinstance(m, (nn.Linear, nn.Conv1d)):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        elif isinstance(m, (nn.GRU, nn.LSTM)):
+            for name, param in m.named_parameters():
+                if "weight" in name:
+                    nn.init.orthogonal_(param)
+                elif "bias" in name:
+                    nn.init.zeros_(param)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         h = cast(torch.Tensor, self.encoder(x.transpose(1, 2)))

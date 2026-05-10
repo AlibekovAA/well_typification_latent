@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import pickle
 from pathlib import Path
 from typing import Any, cast
@@ -8,7 +9,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from config import MODEL_HYPERPARAMS, MODELS_DIR
+from config import MODELS_DIR
 from models.models import build_model
 
 
@@ -20,17 +21,25 @@ def load_trained_model(prefix: str, device: torch.device | None = None) -> tuple
     if device is None:
         device = get_device()
 
-    checkpoint: dict[str, Any] = torch.load(MODELS_DIR / prefix / "model.pth", map_location=device, weights_only=False)
-    hp = MODEL_HYPERPARAMS
+    best_model_path = MODELS_DIR / prefix / "best_clustering_model.json"
+    with open(best_model_path, encoding="utf-8") as f:
+        best_meta = json.load(f)
+    best_arch = str(best_meta["architecture"]).lower()
+
+    checkpoint_path = MODELS_DIR / prefix / best_arch / "model.pth"
+    checkpoint: dict[str, Any] = torch.load(checkpoint_path, map_location=device, weights_only=False)
+
+    cfg = checkpoint["config"]
+
     model = build_model(
         arch_name=str(checkpoint["architecture"]),
-        input_dim=int(hp["input_dim"]),
-        hidden_size=int(hp["hidden_size"]),
+        input_dim=int(cfg["input_dim"]),
+        hidden_size=int(cfg["hidden_size"]),
         latent_dim=int(checkpoint["latent_dim"]),
-        num_layers=int(hp["num_layers"]),
-        kernel_size=int(hp["kernel_size"]),
-        dilation_base=int(hp["dilation_base"]),
-        dropout=float(hp["dropout"]),
+        num_layers=int(cfg["num_layers"]),
+        kernel_size=int(cfg["kernel_size"]),
+        dilation_base=int(cfg["dilation_base"]),
+        dropout=float(cfg["dropout"]),
     ).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()

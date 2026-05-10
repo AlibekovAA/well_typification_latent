@@ -94,12 +94,15 @@ WELL_CONFIGS: list[WellConfig] = [
 
 CLUSTER_LABELS: dict[str, dict[int, str]] = {
     "ecn": {
-        0: "Выключена / простои",
-        1: "Стабильная работа",
+        0: "Выключена / пуск",
+        1: "Переходный режим (разгон)",
+        2: "Стабильная работа",
+        3: "Высокая нагрузка / нестабильный приток",
     },
     "shgn": {
-        0: "Стабильная жидкостная фаза (нефть/вода)",
-        1: "газожидкостный переход",
+        0: "Газовая фаза",
+        1: "Нефтяная фаза (стабильная)",
+        2: "Водо-газовый переход",
     },
 }
 
@@ -111,21 +114,15 @@ PUMP_TYPE_LABEL: dict[str, str] = {
 CLUSTER_COLORS: dict[str, dict[int, str]] = {
     "ecn": {
         0: "#95a5a6",
-        1: "#2ecc71",
+        1: "#f39c12",
+        2: "#2ecc71",
+        3: "#e74c3c",
     },
     "shgn": {
-        0: "#8e44ad",
-        1: "#e67e22",
+        0: "#3498db",
+        1: "#2ecc71",
+        2: "#e67e22",
     },
-}
-
-MODEL_HYPERPARAMS: dict[str, int | float] = {
-    "input_dim": len(FEATURE_COLUMNS),
-    "hidden_size": 256,
-    "num_layers": 2,
-    "kernel_size": 5,
-    "dilation_base": 2,
-    "dropout": 0.2,
 }
 
 STREAM_SLEEP_SECONDS: float = 10.0
