@@ -2,19 +2,26 @@ from __future__ import annotations
 
 from dash import dcc, html
 
-from config import FEATURE_COLUMNS, FEATURE_LABELS, FEATURE_UNITS, PUMP_TYPE_LABEL, WELL_CONFIGS
+from config import (
+    DASH_MODE_CHART_HEIGHT_PX,
+    FEATURE_COLUMNS,
+    FEATURE_LABELS,
+    FEATURE_UNITS,
+    PUMP_TYPE_LABEL,
+    WELL_CONFIGS,
+)
 
 _CARD_STYLE: dict[str, str] = {
     "flex": "1",
-    "minWidth": "300px",
+    "minWidth": "320px",
     "background": "#ffffff",
-    "borderRadius": "16px",
-    "padding": "20px",
-    "boxShadow": "0 2px 12px rgba(0,0,0,0.07)",
-    "border": "1px solid #e8ecef",
+    "borderRadius": "18px",
+    "padding": "18px 18px 14px 18px",
+    "boxShadow": "0 8px 28px rgba(15,23,42,0.06)",
+    "border": "1px solid #e2e8f0",
     "display": "flex",
     "flexDirection": "column",
-    "gap": "4px",
+    "gap": "6px",
 }
 
 
@@ -26,27 +33,31 @@ def _well_card(well_id: str, pump_type: str) -> html.Div:
                 [
                     html.Span(
                         f"Скважина {well_id}",
-                        style={"fontWeight": "700", "fontSize": "15px", "color": "#1a252f"},
+                        style={"fontWeight": "700", "fontSize": "23px", "color": "#0f172a", "lineHeight": "1.1"},
                     ),
                     html.Span(
                         pump_label,
                         style={
-                            "fontSize": "12px",
+                            "fontSize": "13px",
                             "fontWeight": "600",
-                            "color": "#7f8c8d",
-                            "background": "#f0f3f5",
-                            "borderRadius": "5px",
-                            "padding": "2px 8px",
+                            "color": "#64748b",
+                            "background": "#f1f5f9",
+                            "borderRadius": "999px",
+                            "padding": "3px 10px",
                             "marginLeft": "8px",
                         },
                     ),
                 ],
-                style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
+                style={"display": "flex", "alignItems": "center", "marginBottom": "8px"},
             ),
             html.Div(id=f"status-{well_id}"),
             dcc.Graph(
                 id=f"graph-{well_id}",
-                config={"displayModeBar": False},
+                config={"displayModeBar": False, "showTips": False},
+                style={
+                    "height": f"{DASH_MODE_CHART_HEIGHT_PX}px",
+                    "minHeight": f"{DASH_MODE_CHART_HEIGHT_PX}px",
+                },
             ),
         ],
         style=_CARD_STYLE,
@@ -69,24 +80,31 @@ def _features_tab_content() -> html.Div:
                     f"{FEATURE_LABELS.get(col, col)} ({FEATURE_UNITS.get(col, '')})",
                     style={
                         "fontWeight": "600",
-                        "fontSize": "12px",
-                        "color": "#5d6d7e",
-                        "marginBottom": "2px",
+                        "fontSize": "11px",
+                        "color": "#64748b",
+                        "marginBottom": "4px",
                         "textTransform": "uppercase",
-                        "letterSpacing": "0.04em",
+                        "letterSpacing": "0.06em",
                     },
                 ),
                 dcc.Graph(
                     id=f"feature-graph-{col}",
-                    config={"displayModeBar": False},
+                    config={"displayModeBar": False, "responsive": True, "showTips": False},
+                    style={
+                        "height": "100%",
+                        "minHeight": 0,
+                    },
                 ),
             ],
             style={
                 "background": "#ffffff",
-                "borderRadius": "12px",
-                "padding": "14px",
-                "boxShadow": "0 2px 8px rgba(0,0,0,0.06)",
-                "border": "1px solid #e8ecef",
+                "borderRadius": "14px",
+                "padding": "10px 12px 6px 12px",
+                "boxShadow": "0 4px 18px rgba(15,23,42,0.06)",
+                "border": "1px solid #e2e8f0",
+                "display": "flex",
+                "flexDirection": "column",
+                "minHeight": 0,
             },
         )
         for col in FEATURE_COLUMNS
@@ -113,15 +131,17 @@ def _features_tab_content() -> html.Div:
                     ),
                 ],
                 style={
-                    "marginBottom": "16px",
+                    "marginBottom": "12px",
                     "display": "flex",
                     "alignItems": "center",
+                    "gap": "10px",
                     "background": "#ffffff",
-                    "borderRadius": "10px",
-                    "padding": "10px 16px",
-                    "boxShadow": "0 2px 8px rgba(0,0,0,0.05)",
-                    "border": "1px solid #e8ecef",
+                    "borderRadius": "14px",
+                    "padding": "10px 14px",
+                    "boxShadow": "0 4px 18px rgba(15,23,42,0.05)",
+                    "border": "1px solid #e2e8f0",
                     "width": "fit-content",
+                    "flexWrap": "wrap",
                 },
             ),
             html.Div(
@@ -129,7 +149,10 @@ def _features_tab_content() -> html.Div:
                 style={
                     "display": "grid",
                     "gridTemplateColumns": "repeat(3, 1fr)",
-                    "gap": "14px",
+                    "gridTemplateRows": "repeat(3, minmax(0, 1fr))",
+                    "gap": "12px",
+                    "height": "calc(100vh - 240px)",
+                    "minHeight": "560px",
                 },
             ),
         ],
@@ -148,14 +171,14 @@ def layout_root(*, update_interval_seconds: int) -> html.Div:
                                 "Мониторинг скважин",
                                 style={
                                     "margin": "0 0 2px 0",
-                                    "color": "#1a252f",
+                                    "color": "#0f172a",
                                     "fontWeight": "700",
-                                    "fontSize": "22px",
+                                    "fontSize": "26px",
                                 },
                             ),
                             html.Span(
                                 f"Обновление каждые {update_interval_seconds} секунд",
-                                style={"color": "#95a5a6", "fontSize": "12px"},
+                                style={"color": "#64748b", "fontSize": "13px"},
                             ),
                         ]
                     ),
@@ -164,7 +187,7 @@ def layout_root(*, update_interval_seconds: int) -> html.Div:
                     "display": "flex",
                     "justifyContent": "space-between",
                     "alignItems": "center",
-                    "marginBottom": "20px",
+                    "marginBottom": "16px",
                 },
             ),
             dcc.Tabs(
@@ -174,32 +197,38 @@ def layout_root(*, update_interval_seconds: int) -> html.Div:
                     dcc.Tab(
                         label="По режимам",
                         value="modes",
+                        className="dash-tab",
+                        selected_className="dash-tab--selected",
                         children=html.Div(
                             cards,
                             style={
                                 "display": "flex",
                                 "gap": "16px",
                                 "flexWrap": "wrap",
-                                "paddingTop": "16px",
+                                "paddingTop": "14px",
                             },
                         ),
                     ),
                     dcc.Tab(
                         label="По признакам",
                         value="features",
+                        className="dash-tab",
+                        selected_className="dash-tab--selected",
                         children=html.Div(
                             _features_tab_content(),
-                            style={"paddingTop": "16px"},
+                            style={"paddingTop": "14px"},
                         ),
                     ),
                 ],
                 style={"fontFamily": "inherit"},
+                className="dash-tabs",
             ),
         ],
+        className="dash-root",
         style={
-            "padding": "28px",
+            "padding": "20px",
             "fontFamily": "'Segoe UI', Arial, sans-serif",
-            "background": "#f0f3f7",
+            "background": "#eef3f9",
             "minHeight": "100vh",
             "boxSizing": "border-box",
         },

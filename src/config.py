@@ -94,15 +94,16 @@ WELL_CONFIGS: list[WellConfig] = [
 
 CLUSTER_LABELS: dict[str, dict[int, str]] = {
     "ecn": {
-        0: "Выключена / пуск",
-        1: "Переходный режим (разгон)",
-        2: "Стабильная работа",
-        3: "Высокая нагрузка / нестабильный приток",
+        0: "Покой / запуск",
+        1: "Переход к работе",
+        2: "Работа с максимальной активностью",
+        3: "Устойчивый высокодебитный режим",
     },
     "shgn": {
-        0: "Газовая фаза",
-        1: "Нефтяная фаза (стабильная)",
-        2: "Водо-газовый переход",
+        0: "Газонасыщенный неустойчивый режим",
+        1: "Умеренно-стабильный жидкостный режим",
+        2: "Динамичный водо‑газовый переход",
+        3: "Стабильный высокодебитный режим",
     },
 }
 
@@ -116,14 +117,20 @@ CLUSTER_COLORS: dict[str, dict[int, str]] = {
         0: "#95a5a6",
         1: "#f39c12",
         2: "#2ecc71",
-        3: "#e74c3c",
+        3: "#3498db",
     },
     "shgn": {
         0: "#3498db",
         1: "#2ecc71",
         2: "#e67e22",
+        3: "#9b59b6",
     },
 }
+
+DASH_MODE_CHART_HEIGHT_PX: int = 380
+DASH_MODE_LEGEND_CLUSTER_SLOTS: int = 4
+DASH_MODE_CHART_MARGIN_BOTTOM_PX: int = 52 + DASH_MODE_LEGEND_CLUSTER_SLOTS * 40
+DASH_MODE_VISIBLE_POINTS: int = 30
 
 STREAM_SLEEP_SECONDS: float = 10.0
 FAST_EMULATOR_SLEEP_SECONDS: float = 0.5

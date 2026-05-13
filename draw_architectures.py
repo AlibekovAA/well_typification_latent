@@ -99,7 +99,7 @@ def init_canvas(
 
 def save_figure(fig: Any, filename: str) -> None:
     fig.tight_layout()
-    fig.savefig(OUT_DIR / filename, dpi=300, bbox_inches="tight")
+    fig.savefig(OUT_DIR / filename, dpi=450, bbox_inches="tight")
     plt.close(fig)
 
 
