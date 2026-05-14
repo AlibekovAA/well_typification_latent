@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import DB_PATH
+from config import DB_BUSY_TIMEOUT_MS, DB_LOCK_RETRY_ATTEMPTS, DB_LOCK_RETRY_DELAY_SECONDS, DB_PATH, PumpType
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class HistoryRecord:
     timestamp: str
     well: str
-    pump_type: str
+    pump_type: PumpType
     cluster: int
     deviation: float
     us_center: float
@@ -66,6 +67,7 @@ INSERT INTO history (
 def _apply_pragmas(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
     conn.row_factory = sqlite3.Row
 
 
@@ -86,11 +88,12 @@ def get_connection(db_path: Path = DB_PATH) -> Generator[sqlite3.Connection]:
     try:
         yield conn
     finally:
+        conn.commit()
         conn.close()
 
 
-def insert_history_record(conn: sqlite3.Connection, record: HistoryRecord) -> None:
-    values = (
+def _record_values(record: HistoryRecord) -> tuple[object, ...]:
+    return (
         record.timestamp,
         record.well,
         record.pump_type,
@@ -106,15 +109,34 @@ def insert_history_record(conn: sqlite3.Connection, record: HistoryRecord) -> No
         record.gas_integral,
         record.water_integral,
     )
-    conn.execute(_INSERT_SQL, values)
-    conn.commit()
-    logger.debug(
-        "history: well=%s ts=%s cluster=%s deviation=%.4f",
-        record.well,
-        record.timestamp,
-        record.cluster,
-        record.deviation,
-    )
+
+
+def insert_history_record(conn: sqlite3.Connection, record: HistoryRecord) -> None:
+    insert_history_records(conn, [record])
+
+
+def insert_history_records(conn: sqlite3.Connection, records: list[HistoryRecord]) -> None:
+    if not records:
+        return
+    values = [_record_values(record) for record in records]
+    for attempt in range(1, DB_LOCK_RETRY_ATTEMPTS + 1):
+        try:
+            conn.executemany(_INSERT_SQL, values)
+            conn.commit()
+            logger.debug("history: batch insert well=%s count=%d", records[0].well, len(records))
+            return
+        except sqlite3.OperationalError as exc:
+            is_locked = "database is locked" in str(exc).lower()
+            if not is_locked or attempt >= DB_LOCK_RETRY_ATTEMPTS:
+                raise
+            sleep_seconds = DB_LOCK_RETRY_DELAY_SECONDS * attempt
+            logger.warning(
+                "БД занята, повтор записи батча через %.2f с (attempt=%d/%d)",
+                sleep_seconds,
+                attempt,
+                DB_LOCK_RETRY_ATTEMPTS,
+            )
+            time.sleep(sleep_seconds)
 
 
 def fetch_history(
@@ -137,4 +159,24 @@ def fetch_history(
         params.append(since)
     sql += " ORDER BY timestamp DESC LIMIT ?"
     params.append(limit)
+    return conn.execute(sql, params).fetchall()
+
+
+def fetch_history_since(
+    conn: sqlite3.Connection,
+    well: str,
+    *,
+    since_exclusive: str,
+    limit: int = 1000,
+) -> list[sqlite3.Row]:
+    sql = """
+        SELECT timestamp, cluster, deviation, pump_type,
+               us_center, us_periph, gas_center, gas_periph, temp,
+               water_center, water_periph, gas_integral, water_integral
+        FROM history
+        WHERE well = ? AND timestamp > ?
+        ORDER BY timestamp ASC
+        LIMIT ?
+    """
+    params: tuple[object, ...] = (well, since_exclusive, limit)
     return conn.execute(sql, params).fetchall()

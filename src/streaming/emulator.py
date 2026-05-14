@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 import threading
 import time
 
@@ -15,22 +16,25 @@ def _run_well_stream(well_cfg: WellConfig, sleep_seconds: float) -> None:
     logger.info("[%s] Запуск потока скважины", well_cfg.well_id)
     bundle = load_processor_bundle(well_cfg.pump_type)
 
-    with get_connection() as conn:
-        processor = WellProcessor(well_cfg, bundle, conn)
+    try:
+        with get_connection() as conn:
+            processor = WellProcessor(well_cfg, bundle, conn)
 
-        for path in iter_well_files(well_cfg.data_dir):
-            logger.info("[%s] Читаю файл: %s", well_cfg.well_id, path.name)
-            with path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        processor.process_raw_line(line)
-                    except ValueError as exc:
-                        logger.warning("[%s] Пропущена строка: %s", well_cfg.well_id, exc)
-                    except Exception as exc:
-                        logger.exception("[%s] Критическая ошибка: %s", well_cfg.well_id, exc)
-                    time.sleep(sleep_seconds)
+            for path in iter_well_files(well_cfg.data_dir):
+                logger.info("[%s] Читаю файл: %s", well_cfg.well_id, path.name)
+                with path.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            processor.process_raw_line(line)
+                        except ValueError as exc:
+                            logger.warning("[%s] Пропущена строка: %s", well_cfg.well_id, exc)
+                        time.sleep(sleep_seconds)
+            processor.flush()
+    except (OSError, RuntimeError, ValueError, KeyError, sqlite3.DatabaseError):
+        logger.exception("[%s] Поток остановлен из-за критической ошибки", well_cfg.well_id)
+        raise
 
     logger.info("[%s] Все файлы обработаны", well_cfg.well_id)
 

@@ -94,16 +94,16 @@ WELL_CONFIGS: list[WellConfig] = [
 
 CLUSTER_LABELS: dict[str, dict[int, str]] = {
     "ecn": {
-        0: "Покой / запуск",
-        1: "Переход к работе",
-        2: "Работа с максимальной активностью",
-        3: "Устойчивый высокодебитный режим",
+        0: "Номинальный рабочий режим",
+        1: "Переходная фаза",
+        2: "Активная подача с повышенной обводнённостью",
+        3: "Фаза пуска",
     },
     "shgn": {
-        0: "Газонасыщенный неустойчивый режим",
-        1: "Умеренно-стабильный жидкостный режим",
-        2: "Динамичный водо‑газовый переход",
-        3: "Стабильный высокодебитный режим",
+        0: "Газовая фаза цикла",
+        1: "Нефтяная фаза цикла",
+        2: "Водяная фаза цикла",
+        3: "Высокообводнённая стабильная фаза",
     },
 }
 
@@ -114,16 +114,16 @@ PUMP_TYPE_LABEL: dict[str, str] = {
 
 CLUSTER_COLORS: dict[str, dict[int, str]] = {
     "ecn": {
-        0: "#95a5a6",
-        1: "#f39c12",
-        2: "#2ecc71",
-        3: "#3498db",
+        0: "#1f77b4",
+        1: "#ff7f0e",
+        2: "#2ca02c",
+        3: "#d62728",
     },
     "shgn": {
-        0: "#3498db",
-        1: "#2ecc71",
-        2: "#e67e22",
-        3: "#9b59b6",
+        0: "#9467bd",
+        1: "#8c564b",
+        2: "#e377c2",
+        3: "#17becf",
     },
 }
 
@@ -134,3 +134,8 @@ DASH_MODE_VISIBLE_POINTS: int = 30
 
 STREAM_SLEEP_SECONDS: float = 10.0
 FAST_EMULATOR_SLEEP_SECONDS: float = 0.5
+DB_BATCH_COMMIT_SIZE: int = 25
+DB_BATCH_COMMIT_INTERVAL_SECONDS: float = 1.0
+DB_BUSY_TIMEOUT_MS: int = 5_000
+DB_LOCK_RETRY_ATTEMPTS: int = 5
+DB_LOCK_RETRY_DELAY_SECONDS: float = 0.05
