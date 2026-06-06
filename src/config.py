@@ -114,16 +114,16 @@ PUMP_TYPE_LABEL: dict[str, str] = {
 
 CLUSTER_COLORS: dict[str, dict[int, str]] = {
     "ecn": {
-        0: "#1f77b4",
-        1: "#ff7f0e",
-        2: "#2ca02c",
-        3: "#d62728",
+        0: "#1F4E79",
+        1: "#6F7D3C",
+        2: "#A6761D",
+        3: "#7F1D3A",
     },
     "shgn": {
-        0: "#9467bd",
-        1: "#8c564b",
-        2: "#e377c2",
-        3: "#17becf",
+        0: "#4B5D8C",
+        1: "#4F7A68",
+        2: "#8A6A3E",
+        3: "#6E4E7A",
     },
 }
 

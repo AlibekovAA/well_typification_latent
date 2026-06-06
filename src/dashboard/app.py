@@ -16,7 +16,6 @@ from config import (
     CLUSTER_COLORS,
     CLUSTER_LABELS,
     DASH_MODE_CHART_HEIGHT_PX,
-    DASH_MODE_CHART_MARGIN_BOTTOM_PX,
     DASH_MODE_VISIBLE_POINTS,
     FAST_EMULATOR_SLEEP_SECONDS,
     FEATURE_COLUMNS,
@@ -108,13 +107,55 @@ def _load_all_thresholds() -> dict[str, dict[int, dict[str, float]]]:
 def _mode_chart_margins() -> dict[str, int]:
     return {
         "t": 12,
-        "b": DASH_MODE_CHART_MARGIN_BOTTOM_PX,
+        "b": 48,
         "l": 12,
         "r": 12,
     }
 
 
 _FEATURE_CHART_HEIGHT = 220
+_DEFAULT_WARN_THRESHOLD = 5.0
+_DEFAULT_ALERT_THRESHOLD = 5.5
+_ATTENTION_COLOR = "#C27D19"
+_ANOMALY_COLOR = "#B91C1C"
+_NORMAL_COLOR = "#2F6F4E"
+
+
+def _cluster_threshold_values(pump_type: str, cluster: int) -> tuple[float, float]:
+    thresholds = _get_cluster_thresholds(pump_type, cluster)
+    if thresholds is None:
+        return _DEFAULT_WARN_THRESHOLD, _DEFAULT_ALERT_THRESHOLD
+    return thresholds["warn"], thresholds["alert"]
+
+
+def _membership_score(deviation: float, alert_threshold: float) -> float:
+    if alert_threshold <= 0:
+        return 0.0
+    return 1.0 / (1.0 + deviation / alert_threshold)
+
+
+def _status_kind(score: float, warn_score: float) -> Literal["normal", "attention", "anomaly"]:
+    if score <= 0.5:
+        return "anomaly"
+    if score <= warn_score:
+        return "attention"
+    return "normal"
+
+
+def _status_color(kind: Literal["normal", "attention", "anomaly"]) -> str:
+    if kind == "normal":
+        return _NORMAL_COLOR
+    if kind == "attention":
+        return _ATTENTION_COLOR
+    return _ANOMALY_COLOR
+
+
+def _status_label(kind: Literal["normal", "attention", "anomaly"]) -> str:
+    if kind == "normal":
+        return "● Норма"
+    if kind == "attention":
+        return "● Внимание"
+    return "● Аномалия"
 
 
 def _time_tickformat(timestamps: Sequence[str]) -> str:
@@ -201,44 +242,16 @@ def _refresh_history_cache(conn: sqlite3.Connection, well_id: str) -> list[WellR
         return _HISTORY_CACHE[well_id]
 
 
-def _deviation_color(pump_type: str, cluster: int, deviation: float) -> str:
-    thresholds = _get_cluster_thresholds(pump_type, cluster)
-    if thresholds is not None:
-        warn = thresholds["warn"]
-        alert = thresholds["alert"]
-    else:
-        warn = 5.0
-        alert = 5.5
-
-    if deviation < warn:
-        return "#2ecc71"
-    if deviation < alert:
-        return "#f39c12"
-    return "#e74c3c"
-
-
-def _deviation_label(pump_type: str, cluster: int, deviation: float) -> str:
-    thresholds = _get_cluster_thresholds(pump_type, cluster)
-    if thresholds is not None:
-        warn = thresholds["warn"]
-        alert = thresholds["alert"]
-    else:
-        warn = 5.0
-        alert = 5.5
-
-    if deviation < warn:
-        return "● Норма"
-    if deviation < alert:
-        return "● Внимание"
-    return "● Аномалия"
-
-
 def _build_status(well_id: str, cluster: int, deviation: float) -> html.Div:
     pump_type = _get_pump_type(well_id)
     cluster_name = CLUSTER_LABELS.get(pump_type, {}).get(cluster, str(cluster))
     cluster_color = CLUSTER_COLORS.get(pump_type, {}).get(cluster, "#7f8c8d")
-    dev_color = _deviation_color(pump_type, cluster, deviation)
-    dev_label = _deviation_label(pump_type, cluster, deviation)
+    warn, alert = _cluster_threshold_values(pump_type, cluster)
+    score = _membership_score(deviation, alert)
+    warn_score = _membership_score(warn, alert)
+    status_kind = _status_kind(score, warn_score)
+    dev_color = _status_color(status_kind)
+    dev_label = _status_label(status_kind)
 
     return html.Div(
         [
@@ -255,7 +268,7 @@ def _build_status(well_id: str, cluster: int, deviation: float) -> html.Div:
                 },
             ),
             html.Span(
-                f"{dev_label}  {deviation:.3f}",
+                f"{dev_label}  {score:.2f}",
                 style={
                     "color": dev_color,
                     "fontWeight": "600",
@@ -289,6 +302,16 @@ def _build_figure(well_id: str, rows: Sequence[WellRecord]) -> go.Figure:
     bar_width = _bar_width_ms(timestamps)
     clusters = [r["cluster"] for r in rows_asc]
     deviations = [r["deviation"] for r in rows_asc]
+    scores: list[float] = []
+    warn_scores: list[float] = []
+    statuses: list[Literal["normal", "attention", "anomaly"]] = []
+    for row in rows_asc:
+        warn, alert = _cluster_threshold_values(pump_type, row["cluster"])
+        score = _membership_score(row["deviation"], alert)
+        warn_score = _membership_score(warn, alert)
+        scores.append(score)
+        warn_scores.append(warn_score)
+        statuses.append(_status_kind(score, warn_score))
 
     fig = go.Figure()
 
@@ -302,22 +325,37 @@ def _build_figure(well_id: str, rows: Sequence[WellRecord]) -> go.Figure:
         color = CLUSTER_COLORS.get(pump_type, {}).get(c, "#7f8c8d")
         label = CLUSTER_LABELS.get(pump_type, {}).get(c, str(c))
         xs: list[str] = []
+        ys: list[float] = []
         devs_c: list[float] = []
+        custom_data: list[tuple[str, float, float, float, str]] = []
         for idx, cl in enumerate(clusters):
             if cl == c:
                 xs.append(timestamps[idx])
+                warn, alert = _cluster_threshold_values(pump_type, c)
+                ys.append(scores[idx])
                 devs_c.append(deviations[idx])
+                custom_data.append((label, deviations[idx], warn, alert, _status_label(statuses[idx])))
 
         if xs:
             fig.add_trace(
                 go.Bar(
                     x=xs,
-                    y=[1] * len(xs),
+                    y=ys,
                     name=label,
                     marker_color=color,
+                    marker_line={"color": "rgba(15,23,42,0.28)", "width": 0.6},
+                    customdata=custom_data,
                     text=[f"{label}<br>Откл. {d:.3f}" for d in devs_c],
                     textposition="none",
-                    hovertemplate="%{x}<br>%{text}<extra></extra>",
+                    hovertemplate=(
+                        "%{x}<br>"
+                        "Режим: %{customdata[0]}<br>"
+                        "Принадлежность: %{y:.2f}<br>"
+                        "Отклонение: %{customdata[1]:.3f}<br>"
+                        "Порог внимания: %{customdata[2]:.3f}<br>"
+                        "Порог аномалии: %{customdata[3]:.3f}<br>"
+                        "Статус: %{customdata[4]}<extra></extra>"
+                    ),
                     width=bar_width,
                 )
             )
@@ -335,19 +373,73 @@ def _build_figure(well_id: str, rows: Sequence[WellRecord]) -> go.Figure:
                 )
             )
 
-    legend_font = 11
+    fig.add_trace(
+        go.Scatter(
+            x=timestamps,
+            y=warn_scores,
+            mode="lines",
+            name="Порог внимания",
+            line={"color": _ATTENTION_COLOR, "width": 1.8, "dash": "dash"},
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=timestamps,
+            y=[0.5] * len(timestamps),
+            mode="lines",
+            name="Порог аномалии",
+            line={"color": _ANOMALY_COLOR, "width": 2.0},
+            hoverinfo="skip",
+        )
+    )
+
+    attention_points = [(timestamps[i], scores[i]) for i, status in enumerate(statuses) if status == "attention"]
+    if attention_points:
+        xs_attention, ys_attention = zip(*attention_points, strict=False)
+        fig.add_trace(
+            go.Scatter(
+                x=list(xs_attention),
+                y=list(ys_attention),
+                mode="markers",
+                name="Внимание",
+                marker={"symbol": "circle-open", "size": 9, "color": _ATTENTION_COLOR, "line": {"width": 2}},
+                hoverinfo="skip",
+            )
+        )
+
+    anomaly_points = [(timestamps[i], scores[i]) for i, status in enumerate(statuses) if status == "anomaly"]
+    if anomaly_points:
+        xs_anomaly, ys_anomaly = zip(*anomaly_points, strict=False)
+        fig.add_trace(
+            go.Scatter(
+                x=list(xs_anomaly),
+                y=list(ys_anomaly),
+                mode="markers",
+                name="Аномалия",
+                marker={"symbol": "x", "size": 10, "color": _ANOMALY_COLOR, "line": {"width": 2}},
+                hoverinfo="skip",
+            )
+        )
 
     fig.update_layout(
-        barmode="stack",
+        barmode="overlay",
         margin=_mode_chart_margins(),
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
         height=DASH_MODE_CHART_HEIGHT_PX,
-        showlegend=True,
+        showlegend=False,
         bargap=0.06,
         hovermode="x unified",
         hoverlabel={"bgcolor": "#0f172a", "font": {"size": 12, "color": "#f8fafc"}},
-        yaxis={"visible": False, "range": [0, 1]},
+        yaxis={
+            "title": {"text": "Принадлежность к режиму", "font": {"size": 12, "color": "#334155"}},
+            "range": [0, 1.05],
+            "showgrid": True,
+            "gridcolor": "rgba(148,163,184,0.22)",
+            "tickfont": {"size": 11, "color": "#334155"},
+            "zeroline": False,
+        },
         xaxis={
             "showgrid": False,
             "tickformat": tick_format,
@@ -356,18 +448,6 @@ def _build_figure(well_id: str, rows: Sequence[WellRecord]) -> go.Figure:
             "automargin": False,
             "ticklabelstandoff": 10,
             "nticks": 8,
-        },
-        legend={
-            "orientation": "h",
-            "yanchor": "bottom",
-            "y": 0.02,
-            "yref": "container",
-            "xanchor": "center",
-            "x": 0.5,
-            "xref": "container",
-            "font": {"size": legend_font, "color": "#334155"},
-            "itemwidth": 30,
-            "tracegroupgap": 16,
         },
     )
     return fig

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dash import dcc, html
 
 from config import (
+    CLUSTER_COLORS,
+    CLUSTER_LABELS,
     DASH_MODE_CHART_HEIGHT_PX,
     FEATURE_COLUMNS,
     FEATURE_LABELS,
@@ -23,6 +25,65 @@ _CARD_STYLE: dict[str, str] = {
     "flexDirection": "column",
     "gap": "6px",
 }
+
+
+def _legend_swatch(color: str) -> html.Span:
+    return html.Span(className="legend-swatch", style={"background": color})
+
+
+def _line_swatch(color: str, *, dashed: bool = False) -> html.Span:
+    return html.Span(
+        className="legend-line legend-line--dashed" if dashed else "legend-line",
+        style={"borderTopColor": color},
+    )
+
+
+def _marker_swatch(label: str, color: str) -> html.Span:
+    return html.Span(label, className="legend-marker", style={"color": color})
+
+
+def _legend_item(marker: html.Span, label: str) -> html.Div:
+    return html.Div([marker, html.Span(label)], className="legend-item")
+
+
+def _cluster_legend_group(pump_type: str) -> html.Div:
+    title = PUMP_TYPE_LABEL.get(pump_type, pump_type.upper())
+    items = [
+        _legend_item(_legend_swatch(CLUSTER_COLORS[pump_type].get(cluster, "#7f8c8d")), label)
+        for cluster, label in CLUSTER_LABELS[pump_type].items()
+    ]
+    return html.Div(
+        [
+            html.Div(title, className="legend-title"),
+            html.Div(items, className="legend-items"),
+        ],
+        className="legend-group",
+    )
+
+
+def _modes_legend() -> html.Div:
+    return html.Div(
+        [
+            _cluster_legend_group("ecn"),
+            _cluster_legend_group("shgn"),
+            html.Div(
+                [
+                    html.Div("Пороговые состояния", className="legend-title"),
+                    html.Div(
+                        [
+                            _legend_item(_line_swatch("#C27D19", dashed=True), "Порог внимания"),
+                            _legend_item(_line_swatch("#B91C1C"), "Порог аномалии"),
+                            _legend_item(_marker_swatch("○", "#C27D19"), "Внимание"),
+                            _legend_item(_marker_swatch("×", "#B91C1C"), "Аномалия"),
+                        ],
+                        className="legend-items",
+                    ),
+                ],
+                className="legend-group",
+            ),
+        ],
+        className="modes-legend",
+    )
 
 
 def _well_card(well_id: str, pump_type: str) -> html.Div:
@@ -146,11 +207,9 @@ def _features_tab_content() -> html.Div:
             ),
             html.Div(
                 graphs,
+                className="feature-grid",
                 style={
-                    "display": "grid",
-                    "gridTemplateColumns": "repeat(auto-fit, minmax(320px, 1fr))",
                     "gridAutoRows": "minmax(220px, auto)",
-                    "gap": "12px",
                     "height": "auto",
                     "minHeight": "560px",
                 },
@@ -200,13 +259,18 @@ def layout_root(*, update_interval_seconds: int) -> html.Div:
                         className="dash-tab",
                         selected_className="dash-tab--selected",
                         children=html.Div(
-                            cards,
-                            style={
-                                "display": "flex",
-                                "gap": "16px",
-                                "flexWrap": "wrap",
-                                "paddingTop": "14px",
-                            },
+                            [
+                                _modes_legend(),
+                                html.Div(
+                                    cards,
+                                    style={
+                                        "display": "flex",
+                                        "gap": "16px",
+                                        "flexWrap": "wrap",
+                                    },
+                                ),
+                            ],
+                            style={"paddingTop": "14px"},
                         ),
                     ),
                     dcc.Tab(
